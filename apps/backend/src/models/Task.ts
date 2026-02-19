@@ -5,7 +5,7 @@ export interface ITask extends Document {
   description?: string;
   status: "pending" | "completed";
   dueDate?: Date;
-  owner: Schema.Types.ObjectId;
+  owner: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
