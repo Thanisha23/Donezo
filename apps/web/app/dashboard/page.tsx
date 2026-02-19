@@ -19,14 +19,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import {
-  Card,
-  CardContent,
-} from "@workspace/ui/components/card";
+import { Card, CardContent } from "@workspace/ui/components/card";
+import { Dialog,DialogContent,DialogTitle,DialogHeader } from "@workspace/ui/components/dialogue";
+import { Textarea} from "@workspace/ui/components/textarea"
+
 import { Input } from "@workspace/ui/components/input";
-import { GripVertical, LogOut, Plus, Trash2 } from "lucide-react";
+import { Edit, GripVertical, LogOut, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -40,9 +39,11 @@ interface Task {
 function SortableTask({
   task,
   onDelete,
+  onEdit,
 }: {
   task: Task;
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
 }) {
   const {
     attributes,
@@ -88,9 +89,21 @@ function SortableTask({
           size="icon"
           onClick={(e) => {
             e.stopPropagation();
+            onEdit(task);
+          }}
+          className="text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.stopPropagation();
             onDelete(task._id);
           }}
-          className="text-destructive hover:text-destructive"
+          className="text-destructive hover:text-destructive cursor-pointer"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -106,11 +119,13 @@ function Column({
   onDelete,
   count,
   bgColor,
+  onEdit,
 }: {
   id: "pending" | "completed";
   title: string;
   tasks: Task[];
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
   count: number;
   bgColor: string;
 }) {
@@ -136,7 +151,12 @@ function Column({
       >
         <div className="min-h-[200px]">
           {tasks.map((task) => (
-            <SortableTask key={task._id} task={task} onDelete={onDelete} />
+            <SortableTask
+              key={task._id}
+              task={task}
+              onDelete={onDelete}
+              onEdit={onEdit}
+            />
           ))}
         </div>
       </SortableContext>
@@ -152,6 +172,9 @@ export default function Dashboard() {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "" });
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -165,6 +188,38 @@ export default function Dashboard() {
       setTasks(data.tasks || []);
     } finally {
       setLoading(false);
+    }
+  };
+
+    const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setEditForm({
+      title: task.title,
+      description: task.description || "",
+    });
+  };
+
+  const closeEditDialog = () => {
+    setEditingTask(null);
+    setEditForm({ title: "", description: "" });
+  };
+
+  const updateTask = async () => {
+    if (!editingTask || !editForm.title.trim()) return;
+
+    try {
+      await apiFetch(`/tasks/${editingTask._id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: editForm.title.trim(),
+          description: editForm.description.trim(),
+        }),
+      });
+
+      fetchTasks();
+      closeEditDialog();
+    } catch (error) {
+      console.error("Failed to update task:", error);
     }
   };
 
@@ -254,7 +309,7 @@ export default function Dashboard() {
           <Button
             variant="ghost"
             onClick={logout}
-            className="text-neutral-500 hover:text-neutral-800"
+            className="text-neutral-500 cursor-pointer hover:text-neutral-800"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
@@ -272,7 +327,7 @@ export default function Dashboard() {
             />
             <Button
               onClick={createTask}
-              className="rounded-xl bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
+              className="rounded-xl cursor-pointer bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
               Add
@@ -291,6 +346,7 @@ export default function Dashboard() {
               title="To Do"
               tasks={pendingTasks}
               onDelete={deleteTask}
+              onEdit={openEditDialog}
               count={pendingTasks.length}
               bgColor="bg-[#fff6e9]"
             />
@@ -300,12 +356,55 @@ export default function Dashboard() {
               title="Completed"
               tasks={completedTasks}
               onDelete={deleteTask}
+               onEdit={openEditDialog} 
               count={completedTasks.length}
               bgColor="bg-[#eafaf1]"
             />
           </div>
         </DndContext>
       </div>
+
+<Dialog open={!!editingTask} onOpenChange={closeEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Input
+                placeholder="Task title"
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, title: e.target.value })
+                }
+                onKeyDown={(e) => e.key === "Enter" && updateTask()}
+              />
+            </div>
+            <div>
+              <Textarea
+                placeholder="Description (optional)"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, description: e.target.value })
+                }
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={closeEditDialog}>
+                Cancel
+              </Button>
+              <Button
+                onClick={updateTask}
+                disabled={!editForm.title.trim()}
+                className="bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
