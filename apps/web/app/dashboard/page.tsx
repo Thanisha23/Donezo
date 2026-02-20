@@ -21,13 +21,29 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
-import { Dialog,DialogContent,DialogTitle,DialogHeader } from "@workspace/ui/components/dialogue";
-import { Textarea} from "@workspace/ui/components/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+} from "@workspace/ui/components/dialogue";
+import { Textarea } from "@workspace/ui/components/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog";
 
 import { Input } from "@workspace/ui/components/input";
 import { Edit, GripVertical, LogOut, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface Task {
   _id: string;
@@ -45,6 +61,8 @@ function SortableTask({
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
 }) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -61,54 +79,80 @@ function SortableTask({
   };
 
   return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      className="mb-3 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-neutral-200 hover:shadow-md transition-all"
-    >
-      <CardContent className="p-4 flex items-center gap-3">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing"
-        >
-          <GripVertical className="h-5 w-5 text-muted-foreground" />
-        </div>
+    <>
+      <Card
+        ref={setNodeRef}
+        style={style}
+        className="mb-3 bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-neutral-200 hover:shadow-md transition-all"
+      >
+        <CardContent className="p-4 flex items-center gap-3">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+          </div>
 
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium truncate">{task.title}</h3>
-          {task.description && (
-            <p className="text-sm text-muted-foreground truncate">
-              {task.description}
-            </p>
-          )}
-        </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium truncate">{task.title}</h3>
+            {task.description && (
+              <p className="text-sm text-muted-foreground truncate">
+                {task.description}
+              </p>
+            )}
+          </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-          className="text-muted-foreground hover:text-foreground cursor-pointer"
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(task._id);
-          }}
-          className="text-destructive hover:text-destructive cursor-pointer"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteDialog(true);
+            }}
+            className="text-destructive hover:text-destructive cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{task.title}"? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete(task._id);
+                setShowDeleteDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground text-white cursor-pointer hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -186,12 +230,14 @@ export default function Dashboard() {
     try {
       const data = await apiFetch("/tasks");
       setTasks(data.tasks || []);
+    } catch (error) {
+      toast.error("Failed to fetch tasks. Please refresh again");
     } finally {
       setLoading(false);
     }
   };
 
-    const openEditDialog = (task: Task) => {
+  const openEditDialog = (task: Task) => {
     setEditingTask(task);
     setEditForm({
       title: task.title,
@@ -216,10 +262,11 @@ export default function Dashboard() {
         }),
       });
 
+      toast.success("Task updated successfully");
       fetchTasks();
       closeEditDialog();
     } catch (error) {
-      console.error("Failed to update task:", error);
+      toast.error("Failed to update task");
     }
   };
 
@@ -235,23 +282,38 @@ export default function Dashboard() {
   const createTask = async () => {
     if (!title.trim()) return;
 
-    await apiFetch("/tasks", {
-      method: "POST",
-      body: JSON.stringify({ title: title.trim() }),
-    });
+    try {
+      await apiFetch("/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title: title.trim() }),
+      });
 
-    setTitle("");
-    fetchTasks();
+      setTitle("");
+      toast.success("Task created successfully");
+      fetchTasks();
+    } catch (error) {
+      toast.error("Failed to create task");
+    }
   };
 
   const deleteTask = async (id: string) => {
-    await apiFetch(`/tasks/${id}`, {
-      method: "DELETE",
-    });
+    try {
+      await apiFetch(`/tasks/${id}`, {
+        method: "DELETE",
+      });
 
-    fetchTasks();
+      toast.success("Task deleted successfully");
+      fetchTasks();
+    } catch (error) {
+      toast.error("Failed to delete task");
+    }
   };
 
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+    toast.success("Logged out successfully");
+  }
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -282,7 +344,12 @@ export default function Dashboard() {
         method: "PUT",
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch {
+
+      toast.success(
+        `Task moved to ${newStatus === "pending" ? "To Do" : "Completed"}`,
+      );
+    } catch (error) {
+      toast.error("Failed to update task status");
       fetchTasks();
     }
   };
@@ -308,7 +375,7 @@ export default function Dashboard() {
 
           <Button
             variant="ghost"
-            onClick={logout}
+            onClick={handleLogout}
             className="text-neutral-500 cursor-pointer hover:text-neutral-800"
           >
             <LogOut className="mr-2 h-4 w-4" />
@@ -327,9 +394,10 @@ export default function Dashboard() {
             />
             <Button
               onClick={createTask}
+              disabled={!title.trim()}
               className="rounded-xl cursor-pointer bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Add
             </Button>
           </div>
@@ -356,7 +424,7 @@ export default function Dashboard() {
               title="Completed"
               tasks={completedTasks}
               onDelete={deleteTask}
-               onEdit={openEditDialog} 
+              onEdit={openEditDialog}
               count={completedTasks.length}
               bgColor="bg-[#eafaf1]"
             />
@@ -364,7 +432,7 @@ export default function Dashboard() {
         </DndContext>
       </div>
 
-<Dialog open={!!editingTask} onOpenChange={closeEditDialog}>
+      <Dialog open={!!editingTask} onOpenChange={closeEditDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
@@ -397,7 +465,7 @@ export default function Dashboard() {
               <Button
                 onClick={updateTask}
                 disabled={!editForm.title.trim()}
-                className="bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
+                className="bg-[#7c5cff] hover:bg-[#6d4df0] text-white cursor-pointer disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
               >
                 Save Changes
               </Button>

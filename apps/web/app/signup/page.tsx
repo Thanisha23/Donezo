@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card";
 import { inter } from "@/lib/fonts";
+import { toast } from "sonner";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -23,27 +24,24 @@ export default function SignupPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       setLoading(true);
-      setError("");
 
-      const data = await apiFetch("/auth/signup", {
+      const data = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify(form),
       });
 
       localStorage.setItem("token", data.token);
+      toast.success("Login successful!");
       router.push("/dashboard");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Signup failed"
+      toast.error(
+        err instanceof Error ? err.message : "Login failed"
       );
     } finally {
       setLoading(false);
@@ -116,11 +114,7 @@ export default function SignupPage() {
               required
             />
 
-            {error && (
-              <div className="bg-red-50 text-red-500 text-sm px-3 py-2 rounded-lg">
-                {error}
-              </div>
-            )}
+          
 
             <Button
               type="submit"

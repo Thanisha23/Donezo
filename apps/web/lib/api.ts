@@ -1,4 +1,4 @@
-const API_BASE =
+const API_BASE = process.env.NODE_ENV === "development" ? "http://localhost:5000/api/v1":
   process.env.NEXT_PUBLIC_API_URL;
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
