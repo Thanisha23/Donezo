@@ -4,7 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import "@workspace/ui/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Task Board",
+  title: "Donezo",
   description: "Manage your tasks efficiently",
 };
 
