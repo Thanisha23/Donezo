@@ -82,7 +82,7 @@ cd apps/web
 ```
 6. **Create a file named `.env` in the root directory add the following environment variables**
 ```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 ```
 7. **Start the frontend development server**
 ```
