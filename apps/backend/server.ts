@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
+dotenv.config();
+
+import "./src/config/redis";
 import mongoose from "mongoose";
 import app from "./src/app";
-import "./src/config/redis";
 
-dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
