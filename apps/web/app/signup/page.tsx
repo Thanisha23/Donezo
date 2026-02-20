@@ -28,21 +28,25 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate password length
+    if (form.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const data = await apiFetch("/auth/login", {
+      const data = await apiFetch("/auth/signup", {
         method: "POST",
         body: JSON.stringify(form),
       });
 
       localStorage.setItem("token", data.token);
-      toast.success("Login successful!");
+      toast.success("Signup successful!");
       router.push("/dashboard");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Login failed"
-      );
+      toast.error(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -53,11 +57,7 @@ export default function SignupPage() {
       className={`min-h-screen ${inter.className} bg-[#f8f7ff] flex flex-col items-center justify-center px-6`}
     >
       <div className="mb-8">
-        <img
-          src="/logo.png"
-          alt="Donezo"
-          className="h-16 w-auto"
-        />
+        <img src="/logo.png" alt="Donezo" className="h-16 w-auto" />
       </div>
 
       <Card className="w-full max-w-md bg-white/70 backdrop-blur-sm border border-neutral-200 shadow-sm rounded-3xl">
@@ -71,10 +71,7 @@ export default function SignupPage() {
         </CardHeader>
 
         <CardContent>
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               type="text"
               placeholder="Full Name"
@@ -101,20 +98,21 @@ export default function SignupPage() {
               required
             />
 
-            <Input
-              type="password"
-              placeholder="Password"
-              value={form.password}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  password: e.target.value,
-                })
-              }
-              required
-            />
-
-          
+            <div>
+              <Input
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={form.password}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    password: e.target.value,
+                  })
+                }
+                required
+                minLength={6}
+              />
+            </div>
 
             <Button
               type="submit"
