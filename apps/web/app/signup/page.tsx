@@ -117,7 +117,7 @@ export default function SignupPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
+              className="w-full rounded-xl cursor-pointer bg-[#9b87f5] hover:bg-[#8a76e8] text-white"
             >
               {loading ? "Creating..." : "Sign Up"}
             </Button>
