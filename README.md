@@ -102,7 +102,7 @@ Backend: http://localhost:5000
 cd apps/backend && pnpm run test
 
 # Run tests with coverage
-cd apps/backend && pnpm run test -- --coverage
+cd apps/backend && pnpm run test:coverage
 ```
 
 <div align="center"><h4>Made by Thanisha Belchada 😄</h4></div>
